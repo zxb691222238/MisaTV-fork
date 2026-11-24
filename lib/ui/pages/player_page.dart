@@ -3248,10 +3248,8 @@ class _PlayerPageState extends State<PlayerPage>
                                   children: [
                                     if (!_live)
                                       _roundButton(
-                                        icon: _isAndroid ? Icons.skip_previous_rounded : Icons.replay_10_rounded,
-                                        onTap: _isAndroid ? (_index > 0 ? () => _switchTo(_index - 1) : null) : () => _seekBy(
-                                          const Duration(seconds: -10),
-                                        ),
+                                        icon: Icons.skip_previous_rounded,
+                                        onTap: _index > 0 ? () => _switchTo(_index - 1) : null,
                                       ),
                                     if (!_live) const SizedBox(width: 22),
                                     _roundButton(
@@ -3264,10 +3262,8 @@ class _PlayerPageState extends State<PlayerPage>
                                     if (!_live) const SizedBox(width: 22),
                                     if (!_live)
                                       _roundButton(
-                                        icon: _isAndroid ? Icons.skip_next_rounded : Icons.forward_10_rounded,
-                                        onTap: _isAndroid ? (_index + 1 < _episodes.length ? () => _switchTo(_index + 1) : null) : () => _seekBy(
-                                          const Duration(seconds: 10),
-                                        ),
+                                        icon: Icons.skip_next_rounded,
+                                        onTap: _index + 1 < _episodes.length ? () => _switchTo(_index + 1) : null,
                                       ),
                                   ],
                                 ),
@@ -3637,38 +3633,7 @@ class _PlayerPageState extends State<PlayerPage>
               ),
             Row(crossAxisAlignment: CrossAxisAlignment.center,
                 
-              children: [if (!_isAndroid) ...[
-                
-                if (!_live)
-                  IconButton(
-                    tooltip: '上一集',
-                    onPressed: _index > 0 ? () => _switchTo(_index - 1) : null,
-                    icon: Icon(
-                      Icons.skip_previous_rounded,
-                      color: _index > 0 ? Colors.white : Colors.white24,
-                    ),
-                  ),
-                IconButton(
-                  tooltip: _playing ? '暂停' : '播放',
-                  onPressed: _togglePlay,
-                  icon: Icon(
-                    _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    color: Colors.white,
-                  ),
-                ),
-                if (!_live)
-                  IconButton(
-                    tooltip: '下一集',
-                    onPressed: _index + 1 < _episodes.length
-                        ? () => _switchTo(_index + 1)
-                        : null,
-                    icon: Icon(
-                      Icons.skip_next_rounded,
-                      color: _index + 1 < _episodes.length
-                          ? Colors.white
-                          : Colors.white24,
-                    ),
-                  )],
+              children: [
                 IconButton(
                   tooltip: '刷新（重新取流）',
                   onPressed: (_refreshing || _resolving)
@@ -3697,93 +3662,7 @@ class _PlayerPageState extends State<PlayerPage>
                   onPressed: _showVolume,
                   icon: Icon(_volumeIcon, color: Colors.white),
                 ),
-             if (_isAndroid) ...[Expanded(child: Align(alignment: Alignment.centerRight, child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [if (!_live) Tooltip(message: '弹幕：点击开关，长按调节速度 / 屏占 / 屏蔽词', child: _barAction(icon: Icons.chat_bubble_outline_rounded, label: '弹幕', active: _danmakuEnabled, onTap: _toggleDanmaku, onLongPress: _showDanmakuPanel)), if (_mdkEnabled && !_live) _barAction(icon: Icons.subtitles_outlined, label: '字幕', active: _subtitleStatus.isNotEmpty, onTap: _showSubtitlePanel), if (_mdkEnabled && !_live && _audioOptions.length > 1) _barAction(icon: Icons.graphic_eq_rounded, label: '音轨', onTap: _showAudioTracks), if (!_live) Tooltip(message: '跳过片头 / 片尾：${_skipSummary()}', child: _barAction(icon: Icons.content_cut_rounded, label: '跳过', active: _skipIntro > 0 || _skipOutro > 0, onTap: _showSkipSettings)), _barAction(icon: Icons.analytics_outlined, label: '详情', active: _detailsVisible, onTap: _toggleDetails, onLongPress: _showDetailsSettings), IconButton(tooltip: '播放设置（画面比例 / 音轨 / 外部播放器）', onPressed: _showPlaybackSettings, icon: const Icon(Icons.tune_rounded, color: Colors.white)), TextButton.icon(onPressed: _showSpeed, icon: const Icon(Icons.speed_rounded, color: Colors.white70, size: 18), label: Text('${_rate.toStringAsFixed(_rate % 1 == 0 ? 0 : 2)}x', style: const TextStyle(color: Colors.white70, fontSize: 12))),],),),),), IconButton(tooltip: _portraitFullscreen ? '横屏全屏' : '竖屏全屏', onPressed: () { unawaited(_applyAndroidOrientation(portrait: !_portraitFullscreen, manual: true)); }, icon: Icon(_portraitFullscreen ? Icons.stay_current_landscape_rounded : Icons.stay_current_portrait_rounded, color: Colors.white70, size: 20)), IconButton(tooltip: '全屏（F / Enter）', onPressed: _toggleFullscreen, icon: Icon(_fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded, color: Colors.white)),] else    Expanded(
-                  child: Wrap(
-                    alignment: WrapAlignment.end,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 2,
-                    children: [
-                      if (!_live)
-                        Tooltip(
-                          message: '弹幕：点击开关，长按调节速度 / 屏占 / 屏蔽词',
-                          child: _barAction(
-                            icon: Icons.chat_bubble_outline_rounded,
-                            label: '弹幕',
-                            active: _danmakuEnabled,
-                            onTap: _toggleDanmaku,
-                            onLongPress: _showDanmakuPanel,
-                          ),
-                        ),
-                      if (_mdkEnabled && !_live)
-                        _barAction(
-                          icon: Icons.subtitles_outlined,
-                          label: '字幕',
-                          active: _subtitleStatus.isNotEmpty,
-                          onTap: _showSubtitlePanel,
-                        ),
-                      // 多音轨的视频直接给入口，不用再进「播放设置」里翻。
-                      if (_mdkEnabled && !_live && _audioOptions.length > 1)
-                        _barAction(
-                          icon: Icons.graphic_eq_rounded,
-                          label: '音轨',
-                          onTap: _showAudioTracks,
-                        ),
-                      if (!_live)
-                        Tooltip(
-                          message: '跳过片头 / 片尾：${_skipSummary()}',
-                          child: _barAction(
-                            icon: Icons.content_cut_rounded,
-                            label: '跳过',
-                            active: _skipIntro > 0 || _skipOutro > 0,
-                            onTap: _showSkipSettings,
-                          ),
-                        ),
-                      _barAction(
-                        icon: Icons.analytics_outlined,
-                        label: '详情',
-                        active: _detailsVisible,
-                        onTap: _toggleDetails,
-                        onLongPress: _showDetailsSettings,
-                      ),
-                      IconButton(
-                        tooltip: '播放设置（画面比例 / 音轨 / 外部播放器）',
-                        onPressed: _showPlaybackSettings,
-                        icon: const Icon(
-                          Icons.tune_rounded,
-                          color: Colors.white,
-                        ),
-                      ),
-                      if (_mpvReady)
-                        TextButton.icon(
-                          onPressed: _openWithMpv,
-                          icon: const Icon(
-                            Icons.open_in_new_rounded,
-                            color: Colors.white70,
-                            size: 18,
-                          ),
-                          label: const Text(
-                            'MPV',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      TextButton.icon(
-                        onPressed: _showSpeed,
-                        icon: const Icon(
-                          Icons.speed_rounded,
-                          color: Colors.white70,
-                          size: 18,
-                        ),
-                        label: Text(
-                          '${_rate.toStringAsFixed(_rate % 1 == 0 ? 0 : 2)}x',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
+             Expanded(child: Align(alignment: Alignment.centerRight, child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [if (!_live) Tooltip(message: '弹幕：点击开关，长按调节速度 / 屏占 / 屏蔽词', child: _barAction(icon: Icons.chat_bubble_outline_rounded, label: '弹幕', active: _danmakuEnabled, onTap: _toggleDanmaku, onLongPress: _showDanmakuPanel)), if (_mdkEnabled && !_live) _barAction(icon: Icons.subtitles_outlined, label: '字幕', active: _subtitleStatus.isNotEmpty, onTap: _showSubtitlePanel), if (_mdkEnabled && !_live && _audioOptions.length > 1) _barAction(icon: Icons.graphic_eq_rounded, label: '音轨', onTap: _showAudioTracks), if (!_live) Tooltip(message: '跳过片头 / 片尾：${_skipSummary()}', child: _barAction(icon: Icons.content_cut_rounded, label: '跳过', active: _skipIntro > 0 || _skipOutro > 0, onTap: _showSkipSettings)), _barAction(icon: Icons.analytics_outlined, label: '详情', active: _detailsVisible, onTap: _toggleDetails, onLongPress: _showDetailsSettings), IconButton(tooltip: '播放设置（画面比例 / 音轨 / 外部播放器）', onPressed: _showPlaybackSettings, icon: const Icon(Icons.tune_rounded, color: Colors.white)), if (_mpvReady) TextButton.icon(onPressed: _openWithMpv, icon: const Icon(Icons.open_in_new_rounded, color: Colors.white70, size: 18), label: const Text('MPV', style: TextStyle(color: Colors.white70, fontSize: 12))), TextButton.icon(onPressed: _showSpeed, icon: const Icon(Icons.speed_rounded, color: Colors.white70, size: 18), label: Text('${_rate.toStringAsFixed(_rate % 1 == 0 ? 0 : 2)}x', style: const TextStyle(color: Colors.white70, fontSize: 12))),],),),),),
               if (_isAndroid)
                 IconButton(
                   tooltip: _portraitFullscreen ? '横屏全屏' : '竖屏全屏',
