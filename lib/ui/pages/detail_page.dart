@@ -426,6 +426,7 @@ class _DetailPageState extends State<DetailPage> {
     int index, {
     int startMs = 0,
     bool allowLogin = true,
+    bool resumeHistory = true,
   }) async {
     final app = AppScope.of(context);
     final site = _site(app);
@@ -455,6 +456,17 @@ class _DetailPageState extends State<DetailPage> {
       }
     }
     if (!mounted) return;
+    var effectiveStartMs = startMs;
+    if (effectiveStartMs <= 0 && resumeHistory) {
+      final history = app.historyFor(detail.sourceKey, detail.id);
+      if (history != null &&
+          history.episodeIndex == index &&
+          history.positionMs > 0 &&
+          (history.durationMs <= 0 ||
+              history.positionMs < history.durationMs - 15000)) {
+        effectiveStartMs = history.positionMs;
+      }
+    }
     _opening = true;
     try {
       await _openPlayerWithLoading(
@@ -463,7 +475,7 @@ class _DetailPageState extends State<DetailPage> {
         flag: flag,
         index: index,
         episodes: episodes,
-        startMs: startMs,
+        startMs: effectiveStartMs,
         allowLogin: allowLogin,
       );
     } finally {
@@ -1221,7 +1233,7 @@ class _DetailPageState extends State<DetailPage> {
     }
 
     void playFromStart() {
-      _playEpisode(0);
+      _playEpisode(0, resumeHistory: false);
     }
 
     void selectFlag(String next) {
