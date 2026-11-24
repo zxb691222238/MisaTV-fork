@@ -3669,7 +3669,6 @@ class _PlayerPageState extends State<PlayerPage>
                           : Colors.white24,
                     ),
                   )],
-                         ,
                 IconButton(
                   tooltip: '刷新（重新取流）',
                   onPressed: (_refreshing || _resolving)
