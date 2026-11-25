@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app.dart';
@@ -575,6 +576,29 @@ class _SearchPageState extends State<SearchPage> {
       builder: (context, constraints) {
         final narrow = constraints.maxWidth < 720;
         final maxWidth = constraints.maxWidth;
+        final isAndroid =
+            !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+        final gridPadding = narrow ? 18.0 : 28.0;
+        final gridSpacing = isAndroid ? 10.0 : 14.0;
+        final SliverGridDelegate resultGridDelegate;
+        if (isAndroid) {
+          final gridWidth = maxWidth - gridPadding * 2;
+          final cardWidth =
+              gridWidth > 0 ? (gridWidth - gridSpacing * 2) / 3 : 110.0;
+          resultGridDelegate = SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisExtent: cardWidth * 1.5 + 48,
+            crossAxisSpacing: gridSpacing,
+            mainAxisSpacing: 14,
+          );
+        } else {
+          resultGridDelegate = const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 188,
+            mainAxisExtent: 292,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 18,
+          );
+        }
         return Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
@@ -800,13 +824,7 @@ class _SearchPageState extends State<SearchPage> {
                   SliverPadding(
                     padding: EdgeInsets.symmetric(horizontal: narrow ? 18 : 28),
                     sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 188,
-                            mainAxisExtent: 292,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 18,
-                          ),
+                      gridDelegate: resultGridDelegate,
                       delegate: SliverChildBuilderDelegate(
                         (_, _) => _PosterSkeleton(
                           color: theme.colorScheme.surfaceContainerHighest
@@ -848,13 +866,7 @@ class _SearchPageState extends State<SearchPage> {
                       12,
                     ),
                     sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 188,
-                            mainAxisExtent: 292,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 18,
-                          ),
+                      gridDelegate: resultGridDelegate,
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final item = visibleItems[index];
                         return PosterCard(
