@@ -894,7 +894,7 @@ class _PlayerPageState extends State<PlayerPage>
     //   「明明已经切过去了，还要再黑屏 8 秒」。
     if (!_deadControllerPending) {
       try {
-        await old?.dispose().timeout(const Duration(seconds: 8));
+        await old?.dispose().timeout(const Duration(seconds: 4));
       } catch (_) {
         // 旧实例释放失败 / 超时都不影响新一集
       }
@@ -946,7 +946,7 @@ class _PlayerPageState extends State<PlayerPage>
       final deathWatch = _watchSequentialOnly(source.url);
       try {
         await Future.any<void>([
-          controller.initialize().timeout(const Duration(seconds: 25)),
+          controller.initialize().timeout(const Duration(seconds: 15)),
           deathWatch.future,
         ]);
         if (deathWatch.fired()) {
