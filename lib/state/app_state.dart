@@ -297,7 +297,9 @@ class AppState extends ChangeNotifier {
   String? activeLiveKey;
   ThemeMode themeMode = ThemeMode.system;
   int accentIndex = 0;
-
+  double fontScale = 1.0;
+ int textColorPreset = 0;
+  
   /// 底部导航栏尺寸：0 紧凑 / 1 标准 / 2 较大 / 3 超大。
   int navBarSize = 1;
 
@@ -924,6 +926,8 @@ class AppState extends ChangeNotifier {
       _ => ThemeMode.system,
     };
     accentIndex = store.accentIndex.clamp(0, accentPalette.length - 1);
+    fontScale = store.fontScale.clamp(0.85, 1.40).toDouble();
+    textColorPreset = store.textColorPreset.clamp(0, 4);
     navBarSize = store.navBarSize.clamp(0, 3);
     navBarAutoHide = store.navBarAutoHide;
     homeColumns = store.homeColumns <= 0 ? 0 : store.homeColumns.clamp(4, 8);
@@ -3077,7 +3081,21 @@ class AppState extends ChangeNotifier {
     await store.setAccentIndex(accentIndex);
     notifyListeners();
   }
-
+  Future<void> setFontScale(double value) async {
+   final next = value.clamp(0.85, 1.40).toDouble();
+   if ((next - fontScale).abs() < 0.001) return;
+   fontScale = next;
+   await store.setFontScale(next);
+   notifyListeners();
+  }
+ Future<void> setTextColorPreset(int value) async {
+   final next = value.clamp(0, 4);
+   if (next == textColorPreset) return;
+   textColorPreset = next;
+   await store.setTextColorPreset(next);
+   notifyListeners();
+ }
+  
   /// 调整底部导航栏尺寸（0 紧凑 / 1 标准 / 2 较大 / 3 超大）。
   Future<void> setNavBarSize(int value) async {
     final next = value.clamp(0, 3);
