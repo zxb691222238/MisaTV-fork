@@ -198,8 +198,39 @@ class _DetailPageState extends State<DetailPage> {
             historyFlag ??
             (detail.flags.isNotEmpty ? detail.flags.first : null);
       });
-      unawaited(_loadDouban(detail));
-      unawaited(_loadEpisodeStills(detail));
+      unawaited(
+        Future<void>.delayed(const Duration(milliseconds: 500), () {
+          if (!mounted) return;
+          unawaited(_loadDouban(detail));
+          unawaited(_loadEpisodeStills(detail));
+        }),
+      );
+      if (!widget.autoPlay && !site.isJarSpider && site.type != 3) {
+        final cfg = app.config;
+        final flag = _flag ?? '';
+        final episodes = detail.episodeList(flag);
+        if (cfg != null && episodes.isNotEmpty) {
+          final sameLine =
+              history != null && (history.flag.isEmpty || history.flag == flag);
+          final resumeIndex = history?.episodeIndex ?? 0;
+          final targetIdx =
+              sameLine && resumeIndex >= 0 && resumeIndex < episodes.length
+              ? resumeIndex
+              : 0;
+          unawaited(() async {
+            try {
+              await app.sourceService.resolvePlay(
+                site: site,
+                config: cfg,
+                flag: flag,
+                rawUrl: episodes[targetIdx].url,
+                jarReady: app.jarReady,
+              );
+            } catch (_) {}
+          }());
+        }
+      }
+          
       if (widget.autoPlay) {
         final flag = _flag ?? '';
         final episodes = detail.episodeList(flag);
@@ -566,7 +597,7 @@ class _DetailPageState extends State<DetailPage> {
     setState(() => _playGate = gate);
 
     // 不等到整体超时才让用户脱身：20 秒后加载框出现取消。
-    cancelHintTimer = Timer(const Duration(seconds: 20), () {
+    cancelHintTimer = Timer(const Duration(seconds: 5), () {
       if (cancelled || !mounted || _playGate != gate) return;
       gate.value = const _PlayGateState.loading(canCancel: true);
     });
@@ -576,7 +607,6 @@ class _DetailPageState extends State<DetailPage> {
         : (site.type == 3
               ? const Duration(seconds: 90)
               : const Duration(seconds: 45));
-    final started = DateTime.now();
     PlayResult? play;
     try {
       play = await _resolvePlayForGate(
@@ -601,16 +631,6 @@ class _DetailPageState extends State<DetailPage> {
     if (cancelled || !mounted) {
       gate.dispose();
       return;
-    }
-    // 极快的直链会让加载框一闪而过；至少展示 400ms，让点击有明确反馈。
-    final elapsed = DateTime.now().difference(started);
-    const minShow = Duration(milliseconds: 400);
-    if (elapsed < minShow) {
-      await Future<void>.delayed(minShow - elapsed);
-      if (cancelled || !mounted) {
-        gate.dispose();
-        return;
-      }
     }
 
     if (play == null || !play.playable) {
