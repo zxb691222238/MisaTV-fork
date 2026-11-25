@@ -964,7 +964,8 @@ class _HeaderState extends State<_Header> {
   late int _quoteIndex = _random.nextInt(_quotes.length);
   Timer? _quoteTimer;
   bool _quotesRequested = false;
-
+final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -1010,9 +1011,21 @@ class _HeaderState extends State<_Header> {
   @override
   void dispose() {
     _quoteTimer?.cancel();
+    _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
-
+  void _submitSearch(AppState app) {
+    final q = _searchController.text.trim();
+    if (q.isEmpty) {
+      _searchFocus.requestFocus();
+      return;
+    }
+    _searchFocus.unfocus();
+    app.requestSearch(q);
+    _searchController.clear();
+  }
+  
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
@@ -1193,7 +1206,39 @@ class _HeaderState extends State<_Header> {
             ],
           ],
         ),
-      ],
+        const SizedBox(height: 12),
+        SizedBox(
+           height: 44,
+         child: TextField(
+            controller: _searchController,
+          focusNode: _searchFocus,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => _submitSearch(app),
+          decoration: InputDecoration(
+              hintText: '搜索影视、演员或 关键词@源名',
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            suffixIcon: IconButton(
+              tooltip: '搜索',
+              onPressed: () => _submitSearch(app),
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              ),
+            isDense: true,
+            filled: true,
+            fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.45,
+              ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 10,
+              ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+              ),
+            ),
+           ),
+          ),
+        ],
     );
   }
 }
