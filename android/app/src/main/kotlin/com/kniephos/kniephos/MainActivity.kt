@@ -3,6 +3,7 @@ package com.kniephos.kniephos
 import android.content.ContentValues
 import android.content.Context
 import android.media.AudioManager
+import android.media.audiofx.LoudnessEnhancer
 import android.os.Build
 import android.provider.Settings
 import android.os.Environment
@@ -21,6 +22,8 @@ class MainActivity : FlutterActivity() {
         @Volatile
         private var spiderGuardInstalled = false
     }
+
+    private var loudnessEnhancer: LoudnessEnhancer? = null
 
     private fun installSpiderThreadCrashGuard() {
         if (spiderGuardInstalled) return
@@ -159,9 +162,38 @@ class MainActivity : FlutterActivity() {
                         am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
                         result.success(null)
                     }
+                "setLoudnessGain" -> {
+                    val gainMb = ((call.arguments as? Number)?.toInt() ?: 0).coerceIn(0, 1500)
+                    try {
+                        if (gainMb <= 0) {
+                            loudnessEnhancer?.enabled = false
+                            loudnessEnhancer?.release()
+                            loudnessEnhancer = null
+                        } else {
+                            val enhancer = loudnessEnhancer ?: LoudnessEnhancer(0).also {
+                                loudnessEnhancer = it
+                            }
+                            enhancer.setTargetGain(gainMb)
+                            enhancer.enabled = true
+                        }
+                    } catch (_: Throwable) {
+                        // 少数设备不支持全局 LoudnessEnhancer 时静默忽略
+                    }
+                    result.success(null)
+                }
                     else -> result.notImplemented()
                 }
             }
 
+    }
+
+    override fun onDestroy() {
+        try {
+            loudnessEnhancer?.enabled = false
+            loudnessEnhancer?.release()
+            loudnessEnhancer = null
+        } catch (_: Throwable) {
+        }
+        super.onDestroy()
     }
 }
