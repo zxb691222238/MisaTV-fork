@@ -52,7 +52,7 @@ class SearchService {
 
   /// 同源同关键词的短期结果缓存：搜索页来回切关键词时不必重复打源站。
   final Map<String, _SearchCacheEntry> _cache = {};
-
+  final Map<String, int> _avgLatencyMs = {};
   /// 搜索代际号：`search()` 每调用一次自增，旧代际的结果一律丢弃。
   int _generation = 0;
 
@@ -289,7 +289,11 @@ class SearchService {
         }
         sourceItems[site.key] = items;
         final ms = DateTime.now().millisecondsSinceEpoch - started;
-        perSource.add(
+        if (cachedItems == null) {
+          final prev = _avgLatencyMs[healthKey];
+          _avgLatencyMs[healthKey] = prev == null ? ms : ((prev * 3 + ms) ~/ 4);
+        }
+                perSource.add(
           SearchPerSource(
             key: site.key,
             name: site.displayName,
@@ -451,14 +455,16 @@ class SearchService {
     bool jarLast = false,
   }) {
     final rows =
-        <({SourceBean site, int index, int jar, int failures})>[];
+        <({SourceBean site, int index, int jar, int failures, int latency})>[];
     var index = 0;
     for (final site in sites) {
+      final key = healthKeyOf(site);
       rows.add((
         site: site,
         index: index++,
         jar: jarLast && site.isJarSpider ? 1 : 0,
-        failures: breaker.failureCount(healthKeyOf(site)),
+        failures: breaker.failureCount(key),
+        latency: _avgLatencyMs[key] ?? 5000,
       ));
     }
     rows.sort((a, b) {
@@ -466,6 +472,8 @@ class SearchService {
       if (byJar != 0) return byJar;
       final byFailures = a.failures.compareTo(b.failures);
       if (byFailures != 0) return byFailures;
+      final byLatency = a.latency.compareTo(b.latency);
+      if (byLatency != 0) return byLatency;
       return a.index - b.index;
     });
     return [for (final row in rows) row.site];
