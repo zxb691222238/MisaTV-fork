@@ -41,8 +41,16 @@ class AppTheme {
     return Color.lerp(scheme.primary, const Color(0xFF11170F), 0.45)!;
   }
 
-  static ThemeData build(Color seed, Brightness brightness) {
+  static ThemeData build(Color seed, Brightness brightness, {int textColorPreset = 0}) {
     final isDark = brightness == Brightness.dark;
+    final Color? customOnSurface = switch (textColorPreset) {
+        1 => isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
+      2 => isDark ? const Color(0xFFCBD5E1) : const Color(0xFF374151),
+      3 => isDark ? const Color(0xFFF5E9D4) : const Color(0xFF3B2F2F),
+      4 => isDark ? const Color(0xFFCCFBF1) : const Color(0xFF134E4A),
+      _ => null,
+        };
+
     final scheme =
         ColorScheme.fromSeed(
           seedColor: seed,
@@ -53,6 +61,7 @@ class AppTheme {
           secondary: seed,
           // primary 被换成粉彩色后，浅色主题的 onPrimary 仍是白色：白字压浅底几乎看不清。
           onPrimary: isDark ? null : const Color(0xFF10160E),
+        onSurface: customOnSurface,
           outlineVariant: isDark
               ? const Color(0xFF2B3327)
               : const Color(0xFFE2E9DD),
