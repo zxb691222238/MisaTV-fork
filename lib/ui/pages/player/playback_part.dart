@@ -342,146 +342,55 @@ extension _PlayerPlaybackExt on _PlayerPageState {
       _outroFired = false;
     });
   }
-
-  Future<void> _showSkipSettings() async {
-    final introCtrl = TextEditingController(
-      text: _skipIntro > 0 ? '$_skipIntro' : '',
-    );
-    final outroCtrl = TextEditingController(
-      text: _skipOutro > 0 ? '$_skipOutro' : '',
-    );
-    final action = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('跳过片头 / 片尾'),
-        // 小窗里对话框只有 480×292 的可用空间：去掉默认的大边距，并让
-        // 标题 + 内容整体可滚动，片头/片尾输入框和快捷按钮才都能操作。
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        scrollable: true,
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: StatefulBuilder(
-            builder: (ctx, setDialog) {
-              Widget field(TextEditingController controller, String label) =>
-                  TextField(
-                    controller: controller,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: label,
-                      hintText: '0 = 不跳过',
-                    ),
-                  );
-              return LayoutBuilder(
-                builder: (ctx, constraints) {
-                  // 小窗还能继续缩小到 280×160：窄到并排放不下时改上下排。
-                  final narrow = constraints.maxWidth < 360;
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_skipInheritedFrom.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            '本资源所有剧集共用该设置（当前值来自「$_skipInheritedFrom」）。',
-                            style: Theme.of(ctx).textTheme.bodySmall,
-                          ),
-                        ),
-                      if (narrow) ...[
-                        field(introCtrl, '片头跳过秒数'),
-                        const SizedBox(height: 10),
-                        field(outroCtrl, '片尾跳过秒数'),
-                      ] else
-                        Row(
-                          children: [
-                            Expanded(child: field(introCtrl, '片头跳过秒数')),
-                            const SizedBox(width: 12),
-                            Expanded(child: field(outroCtrl, '片尾跳过秒数')),
-                          ],
-                        ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          OutlinedButton(
-                            onPressed: () {
-                              introCtrl.text = '${_position.inSeconds}';
-                              setDialog(() {});
-                            },
-                            child: Text('片头设为当前（${_fmt(_position)}）'),
-                          ),
-                          OutlinedButton(
-                            onPressed: () {
-                              final remain = _duration - _position;
-                              final safe = remain.isNegative
-                                  ? Duration.zero
-                                  : remain;
-                              outroCtrl.text = '${safe.inSeconds}';
-                              setDialog(() {});
-                            },
-                            child: Text(
-                              '片尾设为当前（剩 ${_fmt(_duration > _position ? _duration - _position : Duration.zero)}）',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '保存后对本资源所有剧集生效；片头 = 起播直接跳到该秒数，'
-                        '片尾 = 距结尾还剩这么多秒时自动跳下一集。\n'
-                        '进度条上右键可直接取点：开头 5 分钟算片头，结尾 5 分钟算片尾；'
-                        '右键双击进度条可清除记录。',
-                        style: Theme.of(ctx).textTheme.bodySmall
-                            ?.copyWith(height: 1.5),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop('clear'),
-            child: const Text('清除本资源'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop('save'),
-            child: const Text('保存'),
-          ),
-        ],
-      ),
-    );
-    final intro = action == 'clear' ? 0 : clampSkipSeconds(introCtrl.text);
-    final outro = action == 'clear' ? 0 : clampSkipSeconds(outroCtrl.text);
-    introCtrl.dispose();
-    outroCtrl.dispose();
-    if (action == null) return;
-    await _saveSkipSegments(intro, outro);
-    if (!mounted) return;
-    if (action == 'clear') {
-      _toast('已清除该资源所有剧集的跳过设置');
+  Future<void> _markSkipIntroFromCurrent() async {
+    if (_live) return;
+    final intro = clampSkipSeconds(_position.inSeconds);
+    if (intro <= 0) {
+      _toast('当前进度为 0 秒，片头无需跳过');
       return;
     }
-    _toast('已保存：片头 ${intro}s / 片尾 ${outro}s（本资源全部剧集）');
-    if (intro > 0 && _position.inSeconds < intro) {
-      _seekTo(Duration(seconds: intro));
-    }
+    await _saveSkipSegments(intro, _skipOutro);
+    if (!mounted) return;
+    _toast('片头已设为 ${_fmt(Duration(seconds: intro))}（长按清除）');
   }
 
-  String _skipSummary() {
-    if (_skipIntro <= 0 && _skipOutro <= 0) return '未设置';
-    final parts = <String>[
-      if (_skipIntro > 0) '片头 $_skipIntro 秒',
-      if (_skipOutro > 0) '片尾 $_skipOutro 秒',
-    ];
-    final base = parts.join(' / ');
-    return _skipInheritedFrom.isEmpty ? base : '$base（本资源共用）';
+  Future<void> _clearSkipIntro() async {
+    if (_live) return;
+    if (_skipIntro <= 0) {
+      _toast('当前未设置片头跳过');
+      return;
+    }
+    await _saveSkipSegments(0, _skipOutro);
+    if (!mounted) return;
+    _toast('已清除片头跳过');
+  }
+
+  Future<void> _markSkipOutroFromCurrent() async {
+    if (_live) return;
+    if (_duration <= Duration.zero) {
+      _toast('视频时长尚未就绪，请稍后再试');
+      return;
+    }
+    final remaining =
+        _position >= _duration ? Duration.zero : _duration - _position;
+    final outro = clampSkipSeconds(remaining.inSeconds);
+    if (outro <= 1) {
+      _toast('离结尾太近，请在片尾开始处点击');
+      return;
+    }
+    await _saveSkipSegments(_skipIntro, outro);
+    if (!mounted) return;
+    _toast('片尾已设为 剩 ${_fmt(Duration(seconds: outro))}（长按清除）');
+  }
+
+  Future<void> _clearSkipOutro() async {
+    if (_live) return;
+    if (_skipOutro <= 0) {
+      _toast('当前未设置片尾跳过');
+      return;
+    }
+    await _saveSkipSegments(_skipIntro, 0);
+    if (!mounted) return;
+    _toast('已清除片尾跳过');
   }
 }
