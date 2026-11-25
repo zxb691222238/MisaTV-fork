@@ -232,7 +232,7 @@ class SearchService {
           // 但也别无限等：本机日志 364 次采样里最慢一次是 32.5 秒。以前是
           // timeout+35，默认 15 秒就变成 50 秒，一个卡死源能把整轮拖到 50 秒以上。
           final timeoutSeconds = site.type == 3
-              ? (site.timeout + 4).clamp(10, 15
+              ? (site.timeout + 4).clamp(10, 15)
               : site.timeout.clamp(6, 10);
           try {
             // 轮次号放进 Zone：JAR 蜘蛛在排队起 JVM 前会比对当前轮次，
