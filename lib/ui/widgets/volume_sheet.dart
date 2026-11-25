@@ -11,8 +11,9 @@ Future<void> showVolumeSheet({
   required ValueChanged<double> onCommit,
   required VoidCallback onToggleMute,
   String? hint,
+  double maxVolume = 1.0,
 }) async {
-  var value = volume.clamp(0.0, 1.0).toDouble();
+  var value = volume.clamp(0.0, maxVolume).toDouble();
   await showModalBottomSheet<void>(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -30,7 +31,7 @@ Future<void> showVolumeSheet({
                     Text('音量', style: theme.textTheme.titleLarge),
                     const SizedBox(width: 10),
                     Text(
-                      '${(value * 100).round()}%',
+                      value > 1.01 ? '${(value * 100).round()}%（增益）' : '${(value * 100).round()}%',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.6,
@@ -57,8 +58,8 @@ Future<void> showVolumeSheet({
                     ),
                     Expanded(
                       child: Slider(
-                        max: 1,
-                        value: value.clamp(0.0, 1.0),
+                        max: maxVolume,
+                        value: value.clamp(0.0, maxVolume),
                         onChanged: (v) {
                           value = v;
                           setSheet(() {});
@@ -75,7 +76,7 @@ Future<void> showVolumeSheet({
                 ),
                 Row(
                   children: [
-                    for (final pct in const [0.3, 0.5, 0.7, 1.0]) ...[
+                    for (final pct in maxVolume > 1.01 ? const [0.5, 1.0, 1.5, 2.0] : const [0.3, 0.5, 0.7, 1.0]) ...[
                       ChoiceChip(
                         label: Text('${(pct * 100).round()}%'),
                         selected: (value - pct).abs() < 0.001,
