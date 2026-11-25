@@ -1007,23 +1007,43 @@ class _ProgressPanel extends StatelessWidget {
           ),
           if (hitSources.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (hitSources.length > 1)
-                  _SourceChip(
-                    label: '全部 ${progress.items.length}',
-                    selected: selectedKey == null,
-                    onTap: () => onSelect(null),
-                  ),
-                for (final source in hitSources)
-                  _SourceChip(
-                    label: '${source.name} ${source.count}',
-                    selected: selectedKey == source.key,
-                    onTap: () => onSelect(source.key),
-                  ),
-              ],
+          Builder(
+            builder: (context) {
+                final isAndroid =
+                    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+                final chips = <Widget>[
+                  if (hitSources.length > 1)
+                    _SourceChip(
+                      label: '全部 ${progress.items.length}',
+                      selected: selectedKey == null,
+                      compact: isAndroid,
+                      onTap: () => onSelect(null),
+                    ),
+                  for (final source in hitSources)
+                    _SourceChip(
+                      label: '${source.name} ${source.count}',
+                      selected: selectedKey == source.key,
+                      compact: isAndroid,
+                      onTap: () => onSelect(source.key),
+                    ),
+                ];
+                if (isAndroid) {
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          mainAxisExtent: 32,
+                          crossAxisSpacing: 6,
+                          mainAxisSpacing: 6,
+                        ),
+                    itemCount: chips.length,
+                    itemBuilder: (_, index) => chips[index],
+                  );
+                }
+                return Wrap(spacing: 8, runSpacing: 8, children: chips);
+              },
             ),
             const SizedBox(height: 8),
             Text(
@@ -1044,29 +1064,35 @@ class _SourceChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.compact = false,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = theme.colorScheme.primary;
+    final radius = compact ? 10.0 : 14.0;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(radius),
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 36),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        constraints: BoxConstraints(minHeight: compact ? 32 : 36),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 6 : 13,
+          vertical: compact ? 4 : 8,
+        ),
         decoration: BoxDecoration(
           color: selected
               ? accent.withValues(alpha: 0.16)
               : theme.colorScheme.surfaceContainerHighest.withValues(
                   alpha: 0.55,
                 ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radius),
           border: Border.all(
             color: selected
                 ? accent.withValues(alpha: 0.55)
@@ -1074,20 +1100,30 @@ class _SourceChip extends StatelessWidget {
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment:
+              compact ? MainAxisAlignment.center : MainAxisAlignment.start,
           children: [
             if (selected) ...[
-              Icon(Icons.check_rounded, size: 15, color: accent),
-              const SizedBox(width: 4),
+              Icon(
+                Icons.check_rounded,
+                size: compact ? 12 : 15,
+                color: accent,
+              ),
+              SizedBox(width: compact ? 2 : 4),
             ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected
-                    ? accent
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.78),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: compact ? 11 : 12.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected
+                      ? accent
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.78),
+                ),
               ),
             ),
           ],
