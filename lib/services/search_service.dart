@@ -41,13 +41,13 @@ class SearchService {
     onHealthChanged?.call();
   }
 
-  static const _emitInterval = Duration(milliseconds: 80);
+  static const _emitInterval = Duration(milliseconds: 160);
   static const _cacheTtl = Duration(minutes: 5);
   static const _cacheMax = 300;
 
   /// 一轮聚合搜索的硬预算：到点先收起界面并作废排队中的 JAR 调用。
   /// 已返回的结果全部保留；只是不再等剩下的慢源，避免 100 个源排队几分钟。
-  static const _defaultRoundBudget = Duration(seconds: 35);
+  static const _defaultRoundBudget = Duration(seconds: 18);
   final Duration roundBudget;
 
   /// 同源同关键词的短期结果缓存：搜索页来回切关键词时不必重复打源站。
@@ -232,8 +232,8 @@ class SearchService {
           // 但也别无限等：本机日志 364 次采样里最慢一次是 32.5 秒。以前是
           // timeout+35，默认 15 秒就变成 50 秒，一个卡死源能把整轮拖到 50 秒以上。
           final timeoutSeconds = site.type == 3
-              ? (site.timeout + 15).clamp(20, 45)
-              : site.timeout + 3;
+              ? (site.timeout + 4).clamp(10, 15
+              : site.timeout.clamp(6, 10);
           try {
             // 轮次号放进 Zone：JAR 蜘蛛在排队起 JVM 前会比对当前轮次，
             // 新搜索 / 取消 / 预算到期后旧调用直接退出，不再后台跑几分钟。
