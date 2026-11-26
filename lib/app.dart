@@ -111,8 +111,16 @@ class KniephosApp extends StatelessWidget {
           return MaterialApp(
             title: 'MisaTV',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.build(seed, Brightness.light),
-            darkTheme: AppTheme.build(seed, Brightness.dark),
+            theme: AppTheme.build(
+              seed, 
+              Brightness.light,
+              textColorPreset: state.textColorPreset,
+            ),
+            darkTheme: AppTheme.build(
+              seed, 
+              Brightness.dark,
+              textColorPreset: state.textColorPreset,
+            ),
             themeMode: state.themeMode,
             locale: const Locale('zh', 'CN'),
             supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
@@ -155,6 +163,14 @@ class KniephosApp extends StatelessWidget {
                     const SingleActivator(LogicalKeyboardKey.gameButtonB):
                         _handleImmersiveBack,
                   },
+                  child: frame,
+                );
+              }
+              if ((state.fontScale - 1.0).abs() > 0.001) {
+                frame = MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(state.fontScale),
+                  ),
                   child: frame,
                 );
               }
