@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app.dart';
@@ -574,6 +575,26 @@ class _SearchPageState extends State<SearchPage> {
       builder: (context, constraints) {
         final narrow = constraints.maxWidth < 720;
         final maxWidth = constraints.maxWidth;
+        final isAndroid =
+            !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+        const gridSpacing = 12.0;
+        final horizontalPadding = narrow ? 36.0 : 56.0;
+        final cardWidth =
+            ((maxWidth - horizontalPadding - gridSpacing * 2) / 3)
+                .clamp(80.0, 220.0);
+        final SliverGridDelegate resultGridDelegate = isAndroid
+            ? SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisExtent: cardWidth * 1.5 + 48,
+                crossAxisSpacing: gridSpacing,
+                mainAxisSpacing: 14,
+              )
+            : const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 188,
+                mainAxisExtent: 292,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 18,
+              );
         return Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
@@ -800,12 +821,7 @@ class _SearchPageState extends State<SearchPage> {
                     padding: EdgeInsets.symmetric(horizontal: narrow ? 18 : 28),
                     sliver: SliverGrid(
                       gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 188,
-                            mainAxisExtent: 292,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 18,
-                          ),
+                        resultGridDelegate,
                       delegate: SliverChildBuilderDelegate(
                         (_, _) => _PosterSkeleton(
                           color: theme.colorScheme.surfaceContainerHighest
@@ -848,12 +864,7 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                     sliver: SliverGrid(
                       gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 188,
-                            mainAxisExtent: 292,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 18,
-                          ),
+                        resultGridDelegate,
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final item = visibleItems[index];
                         return PosterCard(
@@ -994,24 +1005,48 @@ class _ProgressPanel extends StatelessWidget {
           ),
           if (hitSources.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (hitSources.length > 1)
-                  _SourceChip(
-                    label: '全部 ${progress.items.length}',
-                    selected: selectedKey == null,
-                    onTap: () => onSelect(null),
-                  ),
-                for (final source in hitSources)
-                  _SourceChip(
-                    label: '${source.name} ${source.count}',
-                    selected: selectedKey == source.key,
-                    onTap: () => onSelect(source.key),
-                  ),
-              ],
-            ),
+            Builder(
+              builder: (context) {
+final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+                final chips = <Widget>[
+                  if (hitSources.length > 1)
+                    _SourceChip(
+                      label: '全部 ${progress.items.length}',
+                      selected: selectedKey == null,
+                      compact: isAndroid,
+                      onTap: () => onSelect(null),
+                    ),
+                  for (final source in hitSources)
+                    _SourceChip(
+                      label: '${source.name} ${source.count}',
+                      selected: selectedKey == source.key,
+                      compact: isAndroid,
+                      onTap: () => onSelect(source.key),
+                    ),
+                ];
+                if (isAndroid) {
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      mainAxisExtent: 32,
+                      crossAxisSpacing: 6,
+                      mainAxisSpacing: 6,
+                    ),
+                    itemCount: chips.length,
+                    itemBuilder: (context, index) => chips[index],
+                  );
+                }
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: chips,
+                );
+              },
+            ),                
             const SizedBox(height: 8),
             Text(
               '只显示有结果的源；点标签只看该源，再点一次回到全部',
@@ -1031,29 +1066,32 @@ class _SourceChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
-  });
+    this.compact = false,
+    });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
-
+  final bool compact;
+  
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = theme.colorScheme.primary;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(compact ? 10 : 14),
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 36),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        alignment: compact ? Alignment.center : null,
+        constraints: compact ? const BoxConstraints(minHeight: 32, maxHeight: 32) : const BoxConstraints(minHeight: 36),
+        padding: compact ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
         decoration: BoxDecoration(
           color: selected
               ? accent.withValues(alpha: 0.16)
               : theme.colorScheme.surfaceContainerHighest.withValues(
                   alpha: 0.55,
                 ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(compact ? 10 : 14),
           border: Border.all(
             color: selected
                 ? accent.withValues(alpha: 0.55)
@@ -1062,21 +1100,22 @@ class _SourceChip extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: compact ? MainAxisAlignment.center : MainAxisAlignment.start,
           children: [
             if (selected) ...[
-              Icon(Icons.check_rounded, size: 15, color: accent),
-              const SizedBox(width: 4),
+              Icon(Icons.check_rounded, size: compact ? 13 : 15, color: accent),
+              SizedBox(width: compact ? 3 : 4),
             ],
-            Text(
-              label,
+            Flexible(child: Text(
+              label, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: compact ? 11 : 12.5,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 color: selected
                     ? accent
                     : theme.colorScheme.onSurface.withValues(alpha: 0.78),
               ),
-            ),
+            )),
           ],
         ),
       ),
