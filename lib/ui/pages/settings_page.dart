@@ -1021,6 +1021,62 @@ class SettingsPageState extends State<SettingsPage> {
                           ],
                         ),
                         const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Text('界面字号', style: theme.textTheme.labelMedium),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${(app.fontScale * 100).round()}%',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final pct in const [0.9, 1.0, 1.1, 1.2, 1.35])
+                              ChoiceChip(
+                                label: Text('${(pct * 100).round()}%'),
+                                selected: (app.fontScale - pct).abs() < 0.01,
+                                onSelected: (_) => app.setFontScale(pct),
+                              ),
+                          ],
+                        ),
+                        Slider(
+                          min: 0.85,
+                          max: 1.40,
+                          divisions: 11,
+                          value: app.fontScale.clamp(0.85, 1.40),
+                          label: '${(app.fontScale * 100).round()}%',
+                          onChanged: (v) => app.setFontScale(v),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('文字颜色', style: theme.textTheme.labelMedium),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final item in const [
+                              (0, '默认'),
+                              (1, '高对比'),
+                              (2, '柔和灰'),
+                              (3, '护眼暖色'),
+                              (4, '清爽青蓝'),
+                            ])
+                              ChoiceChip(
+                                label: Text(item.$2),
+                                selected: app.textColorPreset == item.$1,
+                                onSelected: (_) =>
+                                    app.setTextColorPreset(item.$1),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
                         Text('底部横条', style: theme.textTheme.labelMedium),
                         const SizedBox(height: 4),
                         Text(
