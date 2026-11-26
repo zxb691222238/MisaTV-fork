@@ -107,11 +107,28 @@ class SourceService {
     summarize: (r) => 'items=${r.items.length} page=${r.page}/${r.pagecount}',
   );
 
+  static const _detailCacheTtl = Duration(minutes: 5);
+  static const _detailCacheMax = 100;
+  static const _playCacheTtl = Duration(minutes: 2);
+  static const _playCacheMax = 40;
+
+  final Map<String, ({DateTime at, VodDetail detail})> _detailCache = {};
+  final Map<String, ({DateTime at, PlayResult play})> _playCache = {};
+
   Future<VodDetail?> detail(
     SourceBean site,
     String id, {
     String name = '',
-  }) => _logged(
+  }) async {
+    final cacheKey = '${site.key}\n$id';
+    final cached = _detailCache[cacheKey];
+    if (cached != null) {
+      if (DateTime.now().difference(cached.at) < _detailCacheTtl) {
+        return cached.detail;
+      }
+      _detailCache.remove(cacheKey);
+    }
+    final res = await _logged(
     'detail',
     site,
     () => _adapterFor(site).detail(site, id, name: name),
@@ -121,6 +138,14 @@ class SourceService {
         : 'flags=${d.flags.length} episodes=${d.flags.map((f) => d.episodes[f]?.length ?? 0).join(',')}',
   );
 
+    if (res != null) {
+      if (_detailCache.length >= _detailCacheMax) {
+        _detailCache.remove(_detailCache.keys.first);
+      }
+      _detailCache[cacheKey] = (at: DateTime.now(), detail: res);
+    }
+    return res;
+  }
   Future<List<VodItem>> search(SourceBean site, String keyword) => _logged(
     'search',
     site,
@@ -182,6 +207,17 @@ class SourceService {
     required String rawUrl,
     bool jarReady = false,
   }) async {
+    final cacheable = !site.isJarSpider && site.type != 3;
+    final playKey = '${site.key}\n$flag\n$rawUrl';
+    if (cacheable) {
+      final cached = _playCache[playKey];
+      if (cached != null) {
+        if (DateTime.now().difference(cached.at) < _playCacheTtl) {
+          return cached.play;
+        }
+        _playCache.remove(playKey);
+      }
+    }
     final sw = Stopwatch()..start();
     try {
       final result = await _resolvePlayInner(
@@ -198,6 +234,12 @@ class SourceService {
             'raw=${shorten(redactUrl(rawUrl), 120)} '
             'msg=${shorten(result.message, 160)}',
       );
+      if (cacheable && result.playable) {
+        if (_playCache.length >= _playCacheMax) {
+          _playCache.remove(_playCache.keys.first);
+        }
+        _playCache[playKey] = (at: DateTime.now(), play: result);
+      }
       return result;
     } catch (e, s) {
       AppLog.e(
