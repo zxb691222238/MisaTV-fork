@@ -31,6 +31,8 @@ class LocalStore {
   static const kThemeMode = 'kniephos.themeMode';
   static const kAccentIndex = 'kniephos.accentIndex';
   static const kNavBarSize = 'kniephos.navBarSize';
+  static const kFontScale = 'kniephos.fontScale';
+  static const kTextColorPreset = 'kniephos.textColorPreset';
   static const kNavBarAutoHide = 'kniephos.navBarAutoHide';
   static const kHomeColumns = 'kniephos.homeColumns';
   static const kHomeBrowseMode = 'kniephos.homeBrowseMode';
@@ -301,7 +303,12 @@ class LocalStore {
 
   int get accentIndex => _prefs.getInt(kAccentIndex) ?? 0;
   Future<void> setAccentIndex(int index) => _prefs.setInt(kAccentIndex, index);
-
+  double get fontScale => _prefs.getDouble(kFontScale) ?? 1.0;
+  Future<void> setFontScale(double value) => _prefs.setDouble(kFontScale, value);
+  int get textColorPreset => _prefs.getInt(kTextColorPreset) ?? 0;
+  Future<void> setTextColorPreset(int value) =>
+      _prefs.setInt(kTextColorPreset, value);
+  
   /// 底部导航栏尺寸：0 紧凑 / 1 标准 / 2 较大 / 3 超大。
   int get navBarSize => _prefs.getInt(kNavBarSize) ?? 1;
   Future<void> setNavBarSize(int value) => _prefs.setInt(kNavBarSize, value);
