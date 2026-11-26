@@ -570,7 +570,7 @@ class _PlayerPageState extends State<PlayerPage>
     );
     _rate = _app.playerSettings.speed;
     _fit = normalizePlayerFit(_app.playerSettings.fit);
-    _volume = _app.playerSettings.volume.clamp(0.0, 1.0).toDouble();
+    _volume = _app.playerSettings.volume.clamp(0.0, 2.0).toDouble();
     if (_volume > 0.001) _lastVolume = _volume;
     _danmakuEnabled = _app.danmakuSettings.enabled;
     // 「详情」开关跨启动记忆：上次开着就继续开，关掉也保持关闭。
@@ -938,7 +938,7 @@ class _PlayerPageState extends State<PlayerPage>
     //   「明明已经切过去了，还要再黑屏 8 秒」。
     if (!_deadControllerPending) {
       try {
-        await old?.dispose().timeout(const Duration(seconds: 8));
+        await old?.dispose().timeout(const Duration(seconds: 4));
       } catch (_) {
         // 旧实例释放失败 / 超时都不影响新一集
       }
@@ -990,7 +990,7 @@ class _PlayerPageState extends State<PlayerPage>
       final deathWatch = _watchSequentialOnly(source.url);
       try {
         await Future.any<void>([
-          controller.initialize().timeout(const Duration(seconds: 25)),
+          controller.initialize().timeout(const Duration(seconds: 15)),
           deathWatch.future,
         ]);
         if (deathWatch.fired()) {
@@ -1025,7 +1025,7 @@ class _PlayerPageState extends State<PlayerPage>
       final live = _detectLive(controller);
       _live = live;
       await controller.setPlaybackSpeed(_rate);
-      await controller.setVolume(_volume);
+      await _applyVolumeToController(controller, _volume);
       final durationMs = controller.value.duration.inMilliseconds;
       // 片头记录可能超过片长（换集后沿用旧设置）：越界就不跳。
       // 直播没有时间轴，不做起播跳转。
@@ -2304,12 +2304,37 @@ class _PlayerPageState extends State<PlayerPage>
     return Icons.volume_up_rounded;
   }
 
+  Future<void> _applyVolumeToController(
+    VideoPlayerController? controller,
+    double volume,
+  ) async {
+    final base = volume.clamp(0.0, 1.0).toDouble();
+    await controller?.setVolume(base);
+    if (_mdkEnabled && controller != null) {
+      try {
+        controller.setProperty(
+          'audio.avfilter',
+          volume > 1.01 ? 'volume=${volume.toStringAsFixed(2)}' : '',
+        );
+      } catch (_) {}
+    }
+    if (_isAndroid) {
+      final gainMb = volume > 1.01 ? ((volume - 1.0) * 1500).round() : 0;
+      try {
+        await _androidDeviceChannel.invokeMethod<void>(
+          'setLoudnessGain',
+          gainMb,
+        );
+      } catch (_) {}
+    }
+  }
+
   /// 调播放器自己的音量（0–1），`persist` 为 true 时写入播放设置。
   Future<void> _setVolume(double value, {bool persist = false}) async {
-    final volume = value.clamp(0.0, 1.0).toDouble();
+    final volume = value.clamp(0.0, 2.0).toDouble();
     if (_volume > 0.001) _lastVolume = _volume;
     if (mounted) setState(() => _volume = volume);
-    await _controller?.setVolume(volume);
+    await _applyVolumeToController(_controller, volume);
     if (!persist) return;
     final app = _app;
     await app.setPlayerSettings(app.playerSettings.copyWith(volume: volume));
@@ -2351,10 +2376,11 @@ class _PlayerPageState extends State<PlayerPage>
   Future<void> _showVolume() => showVolumeSheet(
     context: context,
     volume: _volume,
+    maxVolume: 2.0,
     onChanged: (v) => _setVolume(v),
     onCommit: (v) => _setVolume(v, persist: true),
     onToggleMute: _toggleMute,
-    hint: '↑ / ↓ 以 5% 步进调节，M 静音；播放器音量与 Windows 系统音量互不影响。',
+    hint: '↑ / ↓ 以 5% 步进调节，M 静音；超过 100% 启用音量增益（最高 200%）。',
   );
 
   Future<void> _toggleFullscreen() async {
