@@ -190,7 +190,7 @@ class _DetailPageState extends State<DetailPage> {
         _flag =
             historyFlag ??
             (detail.flags.isNotEmpty ? detail.flags.first : null);
-      })
+      });
       unawaited(
         Future<void>.delayed(const Duration(milliseconds: 500), () {
           if (!mounted) return;
