@@ -41,17 +41,18 @@ class SearchService {
     onHealthChanged?.call();
   }
 
-  static const _emitInterval = Duration(milliseconds: 80);
+  static const _emitInterval = Duration(milliseconds: 160);
   static const _cacheTtl = Duration(minutes: 5);
   static const _cacheMax = 300;
 
   /// 一轮聚合搜索的硬预算：到点先收起界面并作废排队中的 JAR 调用。
   /// 已返回的结果全部保留；只是不再等剩下的慢源，避免 100 个源排队几分钟。
-  static const _defaultRoundBudget = Duration(seconds: 35);
+  static const _defaultRoundBudget = Duration(seconds: 18);
   final Duration roundBudget;
 
   /// 同源同关键词的短期结果缓存：搜索页来回切关键词时不必重复打源站。
   final Map<String, _SearchCacheEntry> _cache = {};
+  final Map<String, int> _avgLatencyMs = {};
 
   /// 搜索代际号：`search()` 每调用一次自增，旧代际的结果一律丢弃。
   int _generation = 0;
@@ -231,8 +232,8 @@ class SearchService {
           // 但也别无限等：本机日志 364 次采样里最慢一次是 32.5 秒。以前是
           // timeout+35，默认 15 秒就变成 50 秒，一个卡死源能把整轮拖到 50 秒以上。
           final timeoutSeconds = site.type == 3
-              ? (site.timeout + 15).clamp(20, 45)
-              : site.timeout + 3;
+            ? (site.timeout + 4).clamp(10, 15)
+            : site.timeout.clamp(6, 10);
           try {
             // 轮次号放进 Zone：JAR 蜘蛛在排队起 JVM 前会比对当前轮次，
             // 新搜索 / 取消 / 预算到期后旧调用直接退出，不再后台跑几分钟。
@@ -288,6 +289,10 @@ class SearchService {
         }
         sourceItems[site.key] = items;
         final ms = DateTime.now().millisecondsSinceEpoch - started;
+      if (cachedItems == null) {
+        final prev = _avgLatencyMs[healthKey];
+        _avgLatencyMs[healthKey] = prev == null ? ms : ((prev * 3 + ms) ~/ 4);
+      }
         perSource.add(
           SearchPerSource(
             key: site.key,
@@ -442,14 +447,16 @@ class SearchService {
     Iterable<SourceBean> sites, {
     bool jarLast = false,
   }) {
-    final rows = <({SourceBean site, int index, int jar, int failures})>[];
+    final rows = <({SourceBean site, int index, int jar, int failures, int latency})>[];
     var index = 0;
     for (final site in sites) {
+      final key = healthKeyOf(site);
       rows.add((
         site: site,
         index: index++,
         jar: jarLast && site.isJarSpider ? 1 : 0,
-        failures: breaker.failureCount(healthKeyOf(site)),
+        failures: breaker.failureCount(key),
+        latency: _avgLatencyMs[key] ?? 5000,
       ));
     }
     rows.sort((a, b) {
@@ -457,6 +464,8 @@ class SearchService {
       if (byJar != 0) return byJar;
       final byFailures = a.failures.compareTo(b.failures);
       if (byFailures != 0) return byFailures;
+      final byLatency = a.latency.compareTo(b.latency);
+      if (byLatency != 0) return byLatency;
       return a.index - b.index;
     });
     return [for (final row in rows) row.site];
