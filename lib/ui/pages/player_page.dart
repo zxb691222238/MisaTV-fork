@@ -345,6 +345,7 @@ class _PlayerPageState extends State<PlayerPage>
 
   /// 静音前的音量，取消静音时恢复。
   double _lastVolume = 1.0;
+  bool _avfilterActive = false;
   int _openSeq = 0;
 
   /// 光标自动隐藏的计时器（只负责光标）。
@@ -2310,14 +2311,18 @@ class _PlayerPageState extends State<PlayerPage>
   ) async {
     final base = volume.clamp(0.0, 1.0).toDouble();
     await controller?.setVolume(base);
-    if (_mdkEnabled && controller != null) {
-      try {
-        controller.setProperty(
-          'audio.avfilter',
-          volume > 1.01 ? 'volume=${volume.toStringAsFixed(2)}' : '',
-        );
-      } catch (_) {}
-    }
+     if (!_isAndroid && _mdkEnabled && controller != null) {
+      final needFilter = volume > 1.01;
+      if (needFilter || _avfilterActive) {
+        _avfilterActive = needFilter;
+        try {
+          controller.setProperty(
+            'audio.avfilter',
+            needFilter ? 'volume=${volume.toStringAsFixed(2)}' : '',
+          );
+        } catch (_) {}
+      }
+     }
     if (_isAndroid) {
       final gainMb = volume > 1.01 ? ((volume - 1.0) * 1500).round() : 0;
       try {
