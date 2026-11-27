@@ -5,12 +5,19 @@ import 'package:fvp/fvp.dart' as fvp;
 ///
 /// Android 继续使用官方 ExoPlayer 实现，不覆盖。
 void setupPlayerEngine() {
-  if (defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux ||
+  if (defaultTargetPlatform == TargetPlatform.windows) {
+    fvp.registerWith(
+      options: {
+        'platforms': ['windows'],
+        'video.decoders': ['MFT:d3d=11', 'D3D11', 'DXVA', 'FFmpeg'],
+        'lowLatency': 0,
+      },
+    );
+  } else if (defaultTargetPlatform == TargetPlatform.linux ||
       defaultTargetPlatform == TargetPlatform.macOS) {
     fvp.registerWith(
       options: {
-        'platforms': ['windows', 'linux', 'macos'],
+        'platforms': ['linux', 'macos'],
       },
     );
   }
